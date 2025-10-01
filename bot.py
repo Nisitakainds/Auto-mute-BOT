@@ -14,7 +14,7 @@ import time as t
 GUILD_ID = 123456789012345678  # ★自分のサーバーIDに置き換えてください
 MUTE_START = time(0, 0)  # ミュート開始 0:00
 MUTE_END = time(6, 0)    # ミュート解除 6:00
-PING_INTERVAL = 300       # 自分自身を5分ごとにPing
+PING_INTERVAL = 300       # 5分ごとに自分自身をPing
 
 # 日本時間
 JST = pytz.timezone("Asia/Tokyo")
@@ -46,12 +46,14 @@ async def mute_task():
     if not guild:
         return
 
+    # 0:00 一斉ミュート
     if now.hour == MUTE_START.hour and now.minute == MUTE_START.minute:
         for vc in guild.voice_channels:
             for member in vc.members:
                 await member.edit(mute=True)
         print("0:00 全員サーバーミュートしました")
 
+    # 6:00 一斉解除
     if now.hour == MUTE_END.hour and now.minute == MUTE_END.minute:
         for vc in guild.voice_channels:
             for member in vc.members:
@@ -77,7 +79,7 @@ async def on_ready():
     mute_task.start()
 
 # -----------------------
-# 簡易Webサーバー（スリープ対策用）
+# 簡易Webサーバー（スリープ防止用）
 # -----------------------
 app = Flask("")
 
@@ -105,20 +107,3 @@ threading.Thread(target=ping_self).start()
 # Bot起動
 # -----------------------
 bot.run(os.environ["BOT_TOKEN"])
-
-import os
-from discord.ext import commands
-
-bot = commands.Bot(command_prefix="!")
-
-# Bot起動時に環境変数からトークンを取得
-bot.run(os.environ["BOT_TOKEN"])
-
-import os
-from discord.ext import commands
-
-bot = commands.Bot(command_prefix="!")
-
-# Bot起動時に環境変数からトークンを取得
-bot.run(os.environ["RAILWAY_STATIC_URL"])
-
