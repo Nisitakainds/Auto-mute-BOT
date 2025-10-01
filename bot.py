@@ -13,8 +13,8 @@ import time as t
 # -----------------------
 GUILD_ID = 1422530481521426484
 MOD_LOG_CHANNEL_ID = 1422963315746930782
-MUTE_START = time(0, 39)  # 0:00
-MUTE_END = time(0, 40)    # 6:00
+MUTE_START = time(0, 0)  # 0:00
+MUTE_END = time(6, 0)    # 6:00
 PING_INTERVAL = 300       # 5分ごとにPing
 
 # 日本時間
@@ -124,4 +124,5 @@ threading.Thread(target=ping_self, daemon=True).start()
 # Bot起動
 # -----------------------
 bot.run(os.environ["BOT_TOKEN"])
+
 
