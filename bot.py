@@ -30,45 +30,52 @@ intents.voice_states = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # -----------------------
-# ミュート時間判定
+# ミュート時間判定（範囲判定）
 # -----------------------
 def is_mute_time():
     now = datetime.now(JST).time()
-    return MUTE_START <= now < MUTE_END
+    if MUTE_START <= MUTE_END:
+        return MUTE_START <= now < MUTE_END
+    else:
+        # 翌日にまたがる場合
+        return now >= MUTE_START or now < MUTE_END
 
 # -----------------------
-# 定期タスク：一斉ミュート/解除
+# 定期タスク：範囲判定でミュート/解除
 # -----------------------
 @tasks.loop(seconds=60)
 async def mute_task():
-    now = datetime.now(JST).time()
     guild = bot.get_guild(GUILD_ID)
     if not guild:
         return
 
-    # 0:00 一斉ミュート
-    if now.hour == MUTE_START.hour and now.minute == MUTE_START.minute:
-        for vc in guild.voice_channels:
-            for member in vc.members:
-                await member.edit(mute=True)
-        print("0:00 全員サーバーミュートしました")
+    for vc in guild.voice_channels:
+        for member in vc.members:
+            try:
+                if is_mute_time():
+                    await member.edit(mute=True)
+                else:
+                    await member.edit(mute=False)
+            except:
+                pass  # 権限がない場合などはスキップ
 
-    # 6:00 一斉解除
-    if now.hour == MUTE_END.hour and now.minute == MUTE_END.minute:
-        for vc in guild.voice_channels:
-            for member in vc.members:
-                await member.edit(mute=False)
-        print("6:00 全員サーバーミュート解除しました")
+    now = datetime.now(JST).strftime("%H:%M")
+    if is_mute_time():
+        print(f"{now} → 全員サーバーミュート")
+    else:
+        print(f"{now} → 全員ミュート解除")
 
 # -----------------------
 # 途中参加者の即ミュート
 # -----------------------
 @bot.event
 async def on_voice_state_update(member, before, after):
-    if after.channel is not None:
-        if is_mute_time():
+    if after.channel is not None and is_mute_time():
+        try:
             await member.edit(mute=True)
-            print(f"{member.display_name} を途中参加でサーバーミュートしました")
+            print(f"{member.display_name} を途中参加でサーバーミュート")
+        except:
+            pass
 
 # -----------------------
 # Bot起動時
@@ -79,7 +86,7 @@ async def on_ready():
     mute_task.start()
 
 # -----------------------
-# 簡易Webサーバー（スリープ防止用）
+# 簡易Webサーバー（スリープ防止）
 # -----------------------
 app = Flask("")
 
@@ -99,7 +106,6 @@ def ping_self():
             pass
         t.sleep(PING_INTERVAL)
 
-# スレッドで並行実行
 threading.Thread(target=run_server).start()
 threading.Thread(target=ping_self).start()
 
@@ -107,5 +113,3 @@ threading.Thread(target=ping_self).start()
 # Bot起動
 # -----------------------
 bot.run(os.environ["BOT_TOKEN"])
-
-
