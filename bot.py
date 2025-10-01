@@ -12,9 +12,10 @@ import time as t
 # 設定
 # -----------------------
 GUILD_ID = 1422530481521426484
-MUTE_START = time(0, 0)       # ミュート開始 0:00
-MUTE_END = time(6, 0)         # ミュート解除 6:00
-PING_INTERVAL = 300            # 5分ごとにPing
+MOD_LOG_CHANNEL_ID = 1422963315746930782
+MUTE_START = time(0, 0)  # 0:00
+MUTE_END = time(6, 0)    # 6:00
+PING_INTERVAL = 300       # 5分ごとにPing
 
 # 日本時間
 JST = pytz.timezone("Asia/Tokyo")
@@ -42,7 +43,20 @@ def is_mute_time():
         return now >= MUTE_START or now < MUTE_END
 
 # -----------------------
-# VCメンバー自動ミュート
+# Discordへログ送信
+# -----------------------
+async def send_log(message):
+    guild = bot.get_guild(GUILD_ID)
+    if guild:
+        channel = guild.get_channel(MOD_LOG_CHANNEL_ID)
+        if channel:
+            try:
+                await channel.send(message)
+            except:
+                pass
+
+# -----------------------
+# VCメンバー自動ミュート（管理者除外）
 # -----------------------
 @tasks.loop(seconds=60)
 async def mute_task():
@@ -54,14 +68,14 @@ async def mute_task():
     for vc in guild.voice_channels:
         for member in vc.members:
             if member.guild_permissions.administrator:
-                continue  # 管理者はスキップ
+                continue
             try:
                 await member.edit(mute=mute_now)
-            except:
-                pass
+            except Exception as e:
+                await send_log(f"⚠️ ミュート操作エラー: {member.display_name} - {e}")
 
 # -----------------------
-# 途中参加者の即ミュート
+# 途中参加者の即ミュート（管理者除外）
 # -----------------------
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -70,19 +84,20 @@ async def on_voice_state_update(member, before, after):
             return
         try:
             await member.edit(mute=True)
-        except:
-            pass
+            await send_log(f"✅ {member.display_name} を途中参加でサーバーミュート")
+        except Exception as e:
+            await send_log(f"⚠️ 途中参加ミュートエラー: {member.display_name} - {e}")
 
 # -----------------------
 # Bot起動時
 # -----------------------
 @bot.event
 async def on_ready():
-    print(f"ログイン完了: {bot.user}")
+    await send_log(f"🟢 Botログイン完了: {bot.user}")
     mute_task.start()
 
 # -----------------------
-# スリープ対策 Webサーバー + Ping
+# スリープ防止 Webサーバー + Ping
 # -----------------------
 app = Flask("")
 
@@ -109,5 +124,3 @@ threading.Thread(target=ping_self, daemon=True).start()
 # Bot起動
 # -----------------------
 bot.run(os.environ["BOT_TOKEN"])
-
-
