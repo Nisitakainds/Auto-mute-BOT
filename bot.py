@@ -12,27 +12,27 @@ import time as t
 # 設定
 # -----------------------
 GUILD_ID = 1422530481521426484
-MUTE_START = time(0, 22)       # ミュート開始 0:00
-MUTE_END = time(0, 23)         # ミュート解除 6:00
-PING_INTERVAL = 300            # 5分ごとに自分自身をPing
+MUTE_START = time(0, 0)       # ミュート開始 0:00
+MUTE_END = time(6, 0)         # ミュート解除 6:00
+PING_INTERVAL = 300            # 5分ごとにPing
 
 # 日本時間
 JST = pytz.timezone("Asia/Tokyo")
 
 # -----------------------
-# Bot 初期化（すべての必要Intentsを有効）
+# Bot 初期化
 # -----------------------
 intents = discord.Intents.default()
 intents.guilds = True
-intents.members = True         # Server Members Intent
-intents.voice_states = True    # VC参加者取得
-intents.message_content = True # Message Content Intent（コマンド用）
-intents.presences = True       # Presence Intent（必要に応じて）
+intents.members = True
+intents.voice_states = True
+intents.message_content = True
+intents.presences = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # -----------------------
-# ミュート時間判定（範囲判定）
+# ミュート時間判定
 # -----------------------
 def is_mute_time():
     now = datetime.now(JST).time()
@@ -42,7 +42,7 @@ def is_mute_time():
         return now >= MUTE_START or now < MUTE_END
 
 # -----------------------
-# 定期タスク：範囲判定でミュート/解除（管理者除外）
+# VCメンバー自動ミュート
 # -----------------------
 @tasks.loop(seconds=60)
 async def mute_task():
@@ -50,35 +50,26 @@ async def mute_task():
     if not guild:
         return
 
+    mute_now = is_mute_time()
     for vc in guild.voice_channels:
         for member in vc.members:
             if member.guild_permissions.administrator:
                 continue  # 管理者はスキップ
             try:
-                if is_mute_time():
-                    await member.edit(mute=True)
-                else:
-                    await member.edit(mute=False)
+                await member.edit(mute=mute_now)
             except:
                 pass
 
-    now = datetime.now(JST).strftime("%H:%M")
-    if is_mute_time():
-        print(f"{now} → 全員サーバーミュート（管理者除外）")
-    else:
-        print(f"{now} → 全員ミュート解除（管理者除外）")
-
 # -----------------------
-# 途中参加者の即ミュート（管理者除外）
+# 途中参加者の即ミュート
 # -----------------------
 @bot.event
 async def on_voice_state_update(member, before, after):
     if after.channel is not None and is_mute_time():
         if member.guild_permissions.administrator:
-            return  # 管理者はスキップ
+            return
         try:
             await member.edit(mute=True)
-            print(f"{member.display_name} を途中参加でサーバーミュート")
         except:
             pass
 
@@ -91,7 +82,7 @@ async def on_ready():
     mute_task.start()
 
 # -----------------------
-# 簡易Webサーバー（スリープ防止）
+# スリープ対策 Webサーバー + Ping
 # -----------------------
 app = Flask("")
 
@@ -106,18 +97,15 @@ def ping_self():
     url = os.environ.get("RAILWAY_STATIC_URL", "http://localhost:8080/")
     while True:
         try:
-            requests.get(url)
+            requests.get(url, timeout=5)
         except:
             pass
         t.sleep(PING_INTERVAL)
 
-threading.Thread(target=run_server).start()
-threading.Thread(target=ping_self).start()
+threading.Thread(target=run_server, daemon=True).start()
+threading.Thread(target=ping_self, daemon=True).start()
 
 # -----------------------
 # Bot起動
 # -----------------------
 bot.run(os.environ["BOT_TOKEN"])
-
-
-
