@@ -11,21 +11,23 @@ import time as t
 # -----------------------
 # 設定
 # -----------------------
-GUILD_ID = 123456789012345678  # ★自分のサーバーIDに置き換えてください
-MUTE_START = time(0, 0)  # ミュート開始 0:00
-MUTE_END = time(6, 0)    # ミュート解除 6:00
-PING_INTERVAL = 300       # 5分ごとに自分自身をPing
+GUILD_ID = 1422530481521426484
+MUTE_START = time(0, 0)       # ミュート開始 0:00
+MUTE_END = time(6, 0)         # ミュート解除 6:00
+PING_INTERVAL = 300            # 5分ごとに自分自身をPing
 
 # 日本時間
 JST = pytz.timezone("Asia/Tokyo")
 
 # -----------------------
-# Bot 初期化
+# Bot 初期化（すべての必要Intentsを有効）
 # -----------------------
 intents = discord.Intents.default()
 intents.guilds = True
-intents.members = True
-intents.voice_states = True
+intents.members = True         # Server Members Intent
+intents.voice_states = True    # VC参加者取得
+intents.message_content = True # Message Content Intent（コマンド用）
+intents.presences = True       # Presence Intent（必要に応じて）
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -57,7 +59,7 @@ async def mute_task():
                 else:
                     await member.edit(mute=False)
             except:
-                pass  # 権限がない場合などはスキップ
+                pass  # 権限不足などはスキップ
 
     now = datetime.now(JST).strftime("%H:%M")
     if is_mute_time():
