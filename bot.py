@@ -39,11 +39,10 @@ def is_mute_time():
     if MUTE_START <= MUTE_END:
         return MUTE_START <= now < MUTE_END
     else:
-        # 翌日にまたがる場合
         return now >= MUTE_START or now < MUTE_END
 
 # -----------------------
-# 定期タスク：範囲判定でミュート/解除
+# 定期タスク：範囲判定でミュート/解除（管理者除外）
 # -----------------------
 @tasks.loop(seconds=60)
 async def mute_task():
@@ -53,26 +52,30 @@ async def mute_task():
 
     for vc in guild.voice_channels:
         for member in vc.members:
+            if member.guild_permissions.administrator:
+                continue  # 管理者はスキップ
             try:
                 if is_mute_time():
                     await member.edit(mute=True)
                 else:
                     await member.edit(mute=False)
             except:
-                pass  # 権限不足などはスキップ
+                pass
 
     now = datetime.now(JST).strftime("%H:%M")
     if is_mute_time():
-        print(f"{now} → 全員サーバーミュート")
+        print(f"{now} → 全員サーバーミュート（管理者除外）")
     else:
-        print(f"{now} → 全員ミュート解除")
+        print(f"{now} → 全員ミュート解除（管理者除外）")
 
 # -----------------------
-# 途中参加者の即ミュート
+# 途中参加者の即ミュート（管理者除外）
 # -----------------------
 @bot.event
 async def on_voice_state_update(member, before, after):
     if after.channel is not None and is_mute_time():
+        if member.guild_permissions.administrator:
+            return  # 管理者はスキップ
         try:
             await member.edit(mute=True)
             print(f"{member.display_name} を途中参加でサーバーミュート")
