@@ -13,7 +13,7 @@ import time as t
 # -----------------------
 GUILD_ID = 1422530481521426484
 MUTE_START = time(0, 0)       # ミュート開始 0:00
-MUTE_END = time(6, 0)         # ミュート解除 6:00
+MUTE_END = time(0, 17)         # ミュート解除 6:00
 PING_INTERVAL = 300            # 5分ごとに自分自身をPing
 
 # 日本時間
@@ -118,3 +118,4 @@ threading.Thread(target=ping_self).start()
 # Bot起動
 # -----------------------
 bot.run(os.environ["BOT_TOKEN"])
+
